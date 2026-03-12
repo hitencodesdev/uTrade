@@ -1,0 +1,6 @@
+utrade.exe
+*.exe
+output.txt
+sample_input.txt
+*.o
+*.obj
