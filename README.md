@@ -1,49 +1,100 @@
 # uTrade - In-Memory Limit Order Book
 
-A high-performance C++ implementation of a limit order book that supports LIMIT, MARKET, Immediate-or-Cancel (IOC), and Fill-or-Kill (FOK) orders with price-time priority matching.
+uTrade is a fast C++ limit order book that supports:
 
-## Code Explanation & Line-by-Line Significance
+- LIMIT orders
+- MARKET orders
+- IOC (Immediate-or-Cancel)
+- FOK (Fill-or-Kill)
 
-### Header Includes
-- **Lines 1-10**: Basic libraries for input/output (`iostream`, `iomanip`), data structures (`map`, `deque`, `unordered_map`), and utilities (`string`, `sstream`, `algorithm`, `chrono`, `cmath`).
+It matches trades using price-time priority and keeps the order book in memory for quick execution.
 
-### Type Definitions & Utilities
-- **Line 13**: `typedef long long Price;` - Prices are stored as `long long` integers to avoid floating-point precision issues (fixed-point arithmetic).
-- **Lines 15-23**: `stringToPrice` - Safely converts string input (e.g., "10.50") into a scaled integer (1050).
-- **Lines 25-29**: `priceToString` - Formats the scaled integer back into a standard two-decimal string.
+## Overview
 
-### Core Data Structures
-- **Line 31**: `enum OrderType` - Defines the behavior of orders: `LIMIT`, `MARKET`, `IOC`, `FOK`.
-- **Lines 33-41**: `struct Order` - Represents an order entity with ID, side, price, quantity, and type. Line 40 is the constructor defaulting to `LIMIT`.
+This project simulates a trading engine that accepts incoming orders, matches them against existing liquidity, and either fills, cancels, or rests the remaining quantity.
 
-### OrderBook Class
-- **Line 47**: `map<Price, deque<Order>, greater<Price> > bids;` - Buy orders sorted highest price first for price priority.
-- **Line 48**: `map<Price, deque<Order> > asks;` - Sell orders sorted lowest price first.
-- **Line 50**: `unordered_map<string, pair<string, Price> > orderIndex;` - Maps order IDs to their details for $O(1)$ lookup during cancellation.
+It is designed to be simple to follow while still using efficient C++ containers for performance.
 
-### Processing Logic
-- **Lines 56-79**: `processOrder` - The workflow for a new order (Matching -> Filling -> Resting).
-- **Lines 81-135**: `cancel` - Robust cancellation using iterators to cleanly remove orders from the maps and the index.
-- **Lines 137-190**: `printBook` - Displays top 5 asks and top 5 bids using `const_iterator` for C++11 compatibility.
-- **Lines 192-208**: `printStats` - Calculates and prints the performance throughput (orders per second).
+## Key Components
 
-### Matching Engine
-- **Lines 212-256**: `canFullyFill` - Essential for `FOK` (Fill-or-Kill) orders; checks if enough liquidity exists before executing.
-- **Lines 258-291**: `matchBuy` - Matches a buy order against the resting asks. Trades happen at the maker's price.
-- **Lines 293-326**: `matchSell` - Matches a sell order against resting bids.
-- **Lines 328-336**: `addToBook` - Adds unexecuted limit order quantity to the book.
-- **Lines 338-347**: `printBBO` - Prints the real-time "Best Bid / Best Offer".
+### 1. Price handling  
+- Prices are stored as `long long` integers to avoid floating-point issues.
+- Values like `10.50` are converted to integer ticks such as `1050`.
+- The engine converts them back to readable strings when printing output.
 
-### Main Function
-- **Lines 350-434**: `main` - The driver program.
-    - **Lines 352-353**: Optimizes performance by disabling I/O synchronization.
-    - **Lines 361-423**: The main loop: reads inputs, parses commands (CANCEL or ORDER), and handles order types (MARKET, IOC, FOK).
-    - **Line 425**: Final book state output.
-    - **Lines 431**: Output processing speed measurement.
+### 2. Order types
+The project defines several order behaviors:
+
+- `LIMIT`: waits for a matching price if needed
+- `MARKET`: executes immediately against the best available liquidity
+- `IOC`: executes immediately and cancels any unmatched portion
+- `FOK`: executes only if the full quantity can be filled immediately; otherwise it cancels
+
+### 3. Core book structure
+The order book keeps buy and sell orders in separate sorted containers:
+
+- Bids are arranged from highest price to lowest price.
+- Asks are arranged from lowest price to highest price.
+- An index maps order IDs to their details so cancellation can happen quickly.
+
+### 4. Matching logic
+The engine follows this basic process for each incoming order:
+
+1. Check if the order can match with the opposite side.
+2. Fill as much as possible against available resting orders.
+3. If any quantity remains, either rest it or cancel it based on order type.
+
+## Code Structure
+
+### Header includes
+The file includes standard libraries for:
+
+- input and output
+- data containers
+- strings and formatting
+- time and math utilities
+
+### Order model
+The `Order` structure stores:
+
+- order ID
+- side (buy or sell)
+- price
+- quantity
+- order type
+
+### `OrderBook` class
+This class handles:
+
+- order processing
+- cancellation
+- book display
+- trade matching
+- best bid / best offer reporting
+- throughput statistics
+
+### Main program flow
+The `main` function:
+
+- disables slow I/O synchronization for speed
+- reads incoming commands
+- parses order and cancel requests
+- executes matching logic
+- prints the final book state
+- reports orders processed per second
 
 ## How to Run
-1. Compile: `g++ -O3 utrade.cpp -o utrade.exe`
-2. Run with sample input: `Get-Content sample_input.txt | ./utrade.exe`
+
+1. Compile the program:
+   `g++ -O3 utrade.cpp -o utrade.exe`
+
+2. Run it with the sample input:
+   `Get-Content sample_input.txt | ./utrade.exe`
 
 ## Performance
-The engine uses efficient STL containers to achieve high throughput, measured in orders per second at the end of execution.
+
+The engine uses efficient STL containers and optimized matching logic to process a large number of orders quickly. At the end of execution, it reports throughput in orders per second.
+
+## Notes
+
+This project is a good example of a lightweight in-memory matching engine. It is meant to be readable and performant, with each section focused on a specific part of the order book workflow.
